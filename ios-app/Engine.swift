@@ -400,7 +400,7 @@ final class Engine: ObservableObject {
                 return
             }
             if !announced {
-                log("Waiting for a loopback backend to route \(deviceIP):\(DeviceConnection.rsdPort)… enable LocalDevVPN, clashmi, anywhere, or another equivalent tunnel.")
+                log("Waiting for a loopback backend to route \(deviceIP):\(DeviceConnection.rsdPort)… enable a tunnel that loops that address back to this device.")
                 announced = true
             }
             setStep(.network, .waiting)
@@ -1121,7 +1121,7 @@ enum Guides {
         title: "Enable loopback tunnel",
         systemImage: "network",
         steps: [
-            "Enable any backend that routes 10.7.0.1 back to this device, such as LocalDevVPN, clashmi, or anywhere.",
+            "Enable a tunnel that routes 10.7.0.1 back to this device.",
             "Make sure the loopback route is active and Wi‑Fi stays on.",
             "Come back here — the install continues automatically once 10.7.0.1:49152 is reachable.",
         ],

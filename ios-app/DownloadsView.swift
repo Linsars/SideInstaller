@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Downloads manager: lists the SideStore / SS + LiveContainer IPAs the app has
 /// fetched into Documents and lets the user delete them to reclaim space. The
@@ -7,6 +8,7 @@ struct DownloadsView: View {
     @ObservedObject var manager: DownloadsManager
 
     @State private var showSettings = false
+    @State private var showingImporter = false
     /// The IPA the user tapped "Delete" on, pending confirmation.
     @State private var pendingDelete: DownloadedIPA?
 
@@ -26,8 +28,22 @@ struct DownloadsView: View {
                 .animation(.smooth(duration: 0.3), value: manager.deletingID)
             }
             .background(AppBackground())
-            .toolbar { settingsToolbarItem(isPresented: $showSettings) }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showingImporter = true
+                    } label: {
+                        Label("导入 IPA", systemImage: "square.and.arrow.down")
+                    }
+                }
+                settingsToolbarItem(isPresented: $showSettings)
+            }
             .sheet(isPresented: $showSettings) { SettingsView() }
+        }
+        .fileImporter(isPresented: $showingImporter,
+                      allowedContentTypes: [UTType(filenameExtension: "ipa") ?? .data],
+                      allowsMultipleSelection: false) { result in
+            importIPA(result)
         }
         .onAppear { manager.refresh() }
         .alert("删除这个下载文件？",
@@ -87,7 +103,7 @@ struct DownloadsView: View {
                     .foregroundStyle(Theme.brand)
                 Text("暂无下载")
                     .font(.headline)
-                Text("你在“安装”页下载的 IPA 会显示在这里，之后可以随时删除。")
+                Text("你可以在“安装”页自动下载 IPA，或点左上角“导入 IPA”从文件 App 手动导入。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -170,6 +186,26 @@ struct DownloadsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        }
+    }
+
+    private func importIPA(_ result: Result<[URL], Error>) {
+        do {
+            guard let picked = try result.get().first else { return }
+            let granted = picked.startAccessingSecurityScopedResource()
+            defer {
+                if granted { picked.stopAccessingSecurityScopedResource() }
+            }
+
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let dest = docs.appendingPathComponent(picked.lastPathComponent)
+            if FileManager.default.fileExists(atPath: dest.path) {
+                try FileManager.default.removeItem(at: dest)
+            }
+            try FileManager.default.copyItem(at: picked, to: dest)
+            manager.refresh()
+        } catch {
+            manager.lastError = error.localizedDescription
         }
     }
 }

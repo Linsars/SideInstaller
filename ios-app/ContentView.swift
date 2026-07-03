@@ -250,7 +250,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("需要环回隧道")
                         .font(.subheadline.weight(.semibold))
-                    Text("启用任意可将 \(engine.deviceIP) 回环到本机的后端，例如 LocalDevVPN、clashmi 或 anywhere。")
+                    Text("启用可将 \(engine.deviceIP) 回环到本机的后端。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

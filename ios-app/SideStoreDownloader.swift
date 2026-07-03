@@ -132,6 +132,40 @@ enum InstallSource: String, CaseIterable, Identifiable {
 /// Downloads the latest release IPA for the chosen `InstallSource` into Documents.
 enum SideStoreDownloader {
 
+    private static func documentsURL() throws -> URL {
+        guard let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw NSError(domain: "SideStoreDownloader", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法访问文稿目录"])
+        }
+        return dir
+    }
+
+    static func localIPAIfPresent(for source: InstallSource) throws -> URL? {
+        let dir = try documentsURL()
+        let exact = dir.appendingPathComponent(source.fileName)
+        if FileManager.default.fileExists(atPath: exact.path) { return exact }
+
+        let aliases = localAliases(for: source)
+        let urls = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+        for url in urls where url.pathExtension.lowercased() == "ipa" {
+            let name = url.lastPathComponent.lowercased()
+            if aliases.contains(where: { name == $0 || name.contains($0) }) {
+                return url
+            }
+        }
+        return nil
+    }
+
+    private static func localAliases(for source: InstallSource) -> [String] {
+        switch source {
+        case .sideStore:
+            return ["sidestore.ipa"]
+        case .liveContainer:
+            return ["livecontainer.ipa", "livecontainer+sidestore.ipa", "livecontainer-sidestore.ipa"]
+        case .stikDebug:
+            return ["stikdebug.ipa"]
+        }
+    }
+
     struct GHAsset: Decodable {
         let name: String
         let browser_download_url: String
@@ -153,12 +187,19 @@ enum SideStoreDownloader {
         }
     }
 
-    /// Returns the local path of the downloaded IPA. `log` receives progress.
+    /// Returns the local path of the selected IPA. Prefers a locally present IPA
+    /// in Documents; falls back to GitHub download only when needed.
     static func downloadLatest(source: InstallSource,
                                log: @escaping (String) -> Void) async throws -> String {
+        if let local = try localIPAIfPresent(for: source) {
+            log("Using local IPA: \(local.lastPathComponent)")
+            return local.path
+        }
+
         var req = URLRequest(url: source.releaseAPI)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         req.setValue("SideInstaller", forHTTPHeaderField: "User-Agent")
+        req.timeoutInterval = 60
 
         let (data, _) = try await URLSession.shared.data(for: req)
         let release = try JSONDecoder().decode(GHRelease.self, from: data)
@@ -172,12 +213,14 @@ enum SideStoreDownloader {
         }
         log("Downloading \(asset.name) (\(asset.size) bytes) …")
 
-        let (tmp, response) = try await URLSession.shared.download(from: assetURL)
+        var assetReq = URLRequest(url: assetURL)
+        assetReq.timeoutInterval = 120
+        let (tmp, response) = try await URLSession.shared.download(for: assetReq)
         if let http = response as? HTTPURLResponse {
             log("HTTP \(http.statusCode) for \(asset.name)")
         }
 
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let docs = try documentsURL()
         let dest = docs.appendingPathComponent(source.fileName)
         try? FileManager.default.removeItem(at: dest)
         try FileManager.default.moveItem(at: tmp, to: dest)
