@@ -1,9 +1,0 @@
-# SideInstaller — unsigned IPA source
-#
-# Using the upstream release asset for now because this fork has no build-signing
-# secrets configured yet. Once build secrets are added, the build-unsigned-ipa
-# workflow can publish a fork-owned unsigned IPA instead.
-#
-# Override for a one-off run with the UNSIGNED_IPA_URL env var.
-
-https://github.com/FrizzleM/SideInstaller/releases/download/v0.5.0/SideInstaller.ipa
