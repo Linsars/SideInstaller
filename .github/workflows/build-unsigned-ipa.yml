@@ -33,9 +33,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install xcodegen and xcpretty
+      - name: Install xcodegen
         run: |
-          brew install xcodegen xcpretty
+          brew install xcodegen
+
+      - name: Install xcpretty
+        run: |
+          gem install xcpretty --no-document
 
       - name: Install Rust iOS targets
         run: |
