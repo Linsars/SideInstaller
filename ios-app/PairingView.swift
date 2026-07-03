@@ -70,9 +70,9 @@ struct PairingView: View {
         if let summary = engine.deviceSummary {
             StatusPill(text: summary, systemImage: "iphone", color: .green)
         } else if manager.pairingFileExists {
-            StatusPill(text: "Pairing file ready", systemImage: "checkmark.seal.fill", color: .green)
+            StatusPill(text: "配对文件已就绪", systemImage: "checkmark.seal.fill", color: .green)
         } else {
-            StatusPill(text: "No pairing file", systemImage: "lock.slash.fill", color: .orange)
+            StatusPill(text: "暂无配对文件", systemImage: "lock.slash.fill", color: .orange)
         }
     }
 
@@ -81,17 +81,17 @@ struct PairingView: View {
     private var pairingFileCard: some View {
         PanelCard {
             VStack(alignment: .leading, spacing: 14) {
-                sectionTitle("Pairing file", systemImage: "lock.doc.fill")
+                sectionTitle("配对文件", systemImage: "lock.doc.fill")
 
                 Button { manager.generate() } label: {
                     HStack(spacing: 10) {
                         if manager.isGenerating {
                             ProgressView().tint(.white)
-                            Text("Pairing…")
+                            Text("配对中…")
                         } else {
                             Image(systemName: manager.pairingFileExists ? "arrow.clockwise" : "lock.iphone")
                                 .contentTransition(.symbolEffect(.replace))
-                            Text(manager.pairingFileExists ? "Regenerate" : "Generate pairing file")
+                            Text(manager.pairingFileExists ? "重新生成" : "生成配对文件")
                         }
                     }
                 }
@@ -100,7 +100,7 @@ struct PairingView: View {
 
                 if let url = manager.exportURL {
                     ShareLink(item: url) {
-                        Label("Export pairing file", systemImage: "square.and.arrow.up")
+                        Label("导出配对文件", systemImage: "square.and.arrow.up")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                     }
@@ -142,7 +142,7 @@ struct PairingView: View {
     private var generatingSteps: some View {
         CalloutCard(tint: Theme.accent) {
             VStack(alignment: .leading, spacing: 14) {
-                sectionTitle("Pair in Settings", systemImage: "gearshape")
+                sectionTitle("配对设置", systemImage: "gearshape")
                 stepsList(Guides.pairing.steps)
                 if !engine.pairingStatus.isEmpty {
                     Text(engine.pairingStatus)
@@ -159,7 +159,7 @@ struct PairingView: View {
     private var installCard: some View {
         PanelCard {
             VStack(alignment: .leading, spacing: 14) {
-                sectionTitle("Install into an app", systemImage: "tray.and.arrow.down.fill")
+                sectionTitle("安装到应用", systemImage: "tray.and.arrow.down.fill")
 
                 if !engine.vpnConnected {
                     vpnNote
@@ -169,11 +169,11 @@ struct PairingView: View {
                     HStack(spacing: 10) {
                         if manager.isScanning {
                             ProgressView().tint(.white)
-                            Text("Scanning")
+                            Text("扫描中")
                         } else {
                             Image(systemName: manager.hasScanned ? "arrow.clockwise" : "magnifyingglass")
                                 .contentTransition(.symbolEffect(.replace))
-                            Text(manager.hasScanned ? "Rescan apps" : "Scan installed apps")
+                            Text(manager.hasScanned ? "重新扫描应用" : "扫描已安装应用")
                         }
                     }
                 }
@@ -187,7 +187,7 @@ struct PairingView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "shield.lefthalf.filled")
                 .foregroundStyle(.orange)
-            Text("Turn on LocalDevVPN to scan and install — the write runs over its tunnel.")
+            Text("启用任意可用的环回后端后才能扫描和写入，写入过程会走该隧道。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -225,9 +225,9 @@ struct PairingView: View {
                 Image(systemName: "questionmark.app.dashed")
                     .font(.largeTitle)
                     .foregroundStyle(Theme.brand)
-                Text("No supported apps found")
+                Text("未找到受支持的应用")
                     .font(.headline)
-                Text("Install an app like SideStore, StikDebug, or Feather first, then rescan.")
+                Text("请先安装 SideStore、StikDebug、Feather 等应用，然后重新扫描。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -261,10 +261,10 @@ struct PairingView: View {
                     HStack(spacing: 6) {
                         if installing {
                             ProgressView().controlSize(.small)
-                            Text("Installing")
+                            Text("安装中")
                         } else {
                             Image(systemName: "arrow.down.doc")
-                            Text("Install pairing")
+                            Text("安装配对文件")
                         }
                     }
                     .font(.subheadline.weight(.medium))
@@ -287,7 +287,7 @@ struct PairingView: View {
                     .font(.title2)
                     .foregroundStyle(.red)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Something went wrong")
+                    Text("出现问题")
                         .font(.subheadline.weight(.semibold))
                     Text(message)
                         .font(.footnote)

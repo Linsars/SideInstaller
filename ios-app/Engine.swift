@@ -98,15 +98,15 @@ final class Engine: ObservableObject {
     /// picker is populated instantly, then refreshed from the live list on
     /// launch (see `loadAnisetteServers`).
     @Published private(set) var anisetteServers: [AnisetteServer] = AnisetteServer.bundledDefaults
-    // LocalDevVPN's default device (target) IP; configurable in Advanced.
+    // Default loopback target IP used by SideStore/RSD; configurable in Advanced.
     @Published var deviceIP: String = "10.7.0.1"
     // Which build to install (plain SideStore vs LiveContainer + SideStore).
     @Published var installSource: InstallSource = .sideStore
 
     // MARK: Plain-text status readouts
 
-    /// Live LocalDevVPN loopback state, polled (see `startStatusMonitor`) so the
-    /// UI banner + the Install gate always reflect the current tunnel.
+    /// Live loopback transport readiness, based on real reachability of the RSD
+    /// endpoint rather than a specific VPN app or interface heuristic.
     @Published var vpnConnected: Bool = false
     @Published var vpnStatus: String = "unknown"
     @Published var wifiStatus: String = "unknown"
@@ -335,14 +335,14 @@ final class Engine: ObservableObject {
             log("Enter your Apple ID email + password first.")
             return
         }
-        // Pre-flight gate: the entire install runs over LocalDevVPN's loopback
-        // tunnel, so don't even begin until it's connected — show how instead.
-        // (ensureNetwork() below still waits too, as a mid-run safety net in case
-        // the tunnel drops after this check passes.)
+        // Pre-flight gate: the install needs a working loopback route to the
+        // RSD endpoint (`deviceIP:49152`). Don't begin until that transport is
+        // reachable. (ensureNetwork() below still waits too, as a mid-run safety
+        // net in case the route drops after this check passes.)
         refreshNetworkStatus()
         guard vpnConnected else {
             setGuide(Guides.vpn)
-            log("⛔️ LocalDevVPN isn't connected. Turn it on, then tap Install again.")
+            log("⛔️ Loopback tunnel isn't ready. Enable any backend that routes \(deviceIP) back to this device, then tap Install again.")
             return
         }
         resetRun()
@@ -381,7 +381,7 @@ final class Engine: ObservableObject {
         PairingController.shared.softCancel()   // unblock a pending pairing wait
     }
 
-    // MARK: Step 1 — network (waits for LocalDevVPN)
+    // MARK: Step 1 — network (waits for any working loopback backend)
 
     @MainActor
     private func ensureNetwork() async throws {
@@ -389,18 +389,18 @@ final class Engine: ObservableObject {
         var announced = false
         while true {
             try Task.checkCancellation()
-            let (vpn, wifi, detail) = NetworkStatus.summarize(deviceIP: deviceIP)
-            vpnConnected = vpn
-            vpnStatus = vpn ? "tunnel up" : "no tunnel"
+            let (reachable, wifi, detail) = await NetworkStatus.summarize(deviceIP: deviceIP)
+            vpnConnected = reachable
+            vpnStatus = reachable ? "route ready" : "route unavailable"
             wifiStatus = wifi ? "on" : "off"
-            if vpn {
+            if reachable {
                 log("Network OK: \(detail)")
                 setStep(.network, .done)
                 setGuide(nil)
                 return
             }
             if !announced {
-                log("Waiting for LocalDevVPN tunnel… open LocalDevVPN and tap Connect.")
+                log("Waiting for a loopback backend to route \(deviceIP):\(DeviceConnection.rsdPort)… enable LocalDevVPN, clashmi, anywhere, or another equivalent tunnel.")
                 announced = true
             }
             setStep(.network, .waiting)
@@ -847,13 +847,17 @@ final class Engine: ObservableObject {
     // orchestrator instead surfaces failures as a stopped step + guide).
 
     func checkVPNAndWifi() {
-        let (vpn, wifi, detail) = NetworkStatus.summarize(deviceIP: deviceIP)
-        vpnConnected = vpn
-        vpnStatus = vpn ? "tunnel up" : "no tunnel (start LocalDevVPN)"
-        wifiStatus = wifi ? "on" : "off"
-        log("Network: \(detail)")
-        log("VPN(loopback)=\(vpnStatus), Wi-Fi=\(wifiStatus). RSD target \(deviceIP):\(DeviceConnection.rsdPort).")
-        if !vpn { log("⚠️ No LocalDevVPN tunnel on \(deviceIP)'s subnet — open LocalDevVPN and tap Connect.") }
+        Task { @MainActor in
+            let (reachable, wifi, detail) = await NetworkStatus.summarize(deviceIP: deviceIP)
+            vpnConnected = reachable
+            vpnStatus = reachable ? "route ready" : "route unavailable"
+            wifiStatus = wifi ? "on" : "off"
+            log("Network: \(detail)")
+            log("Loopback=\(vpnStatus), Wi‑Fi=\(wifiStatus). RSD target \(deviceIP):\(DeviceConnection.rsdPort).")
+            if !reachable {
+                log("⚠️ Can't reach \(deviceIP):\(DeviceConnection.rsdPort). Enable any backend that loops that address back to this device.")
+            }
+        }
     }
 
     /// Poll the interface list so `vpnConnected` (and the plain-text readouts)
@@ -871,10 +875,12 @@ final class Engine: ObservableObject {
     /// One quiet (non-logging) re-scan of the LocalDevVPN/Wi-Fi state. Used by the
     /// poll above and as the authoritative check inside the Install gate.
     func refreshNetworkStatus() {
-        let (vpn, wifi, _) = NetworkStatus.summarize(deviceIP: deviceIP)
-        vpnConnected = vpn
-        vpnStatus = vpn ? "tunnel up" : "no tunnel (start LocalDevVPN)"
-        wifiStatus = wifi ? "on" : "off"
+        Task { @MainActor in
+            let (reachable, wifi, _) = await NetworkStatus.summarize(deviceIP: deviceIP)
+            vpnConnected = reachable
+            vpnStatus = reachable ? "route ready" : "route unavailable"
+            wifiStatus = wifi ? "on" : "off"
+        }
     }
 
     /// RPPairing host (fire-and-forget; reports back through the shared engine).
@@ -986,9 +992,10 @@ final class Engine: ObservableObject {
     @MainActor
     private func ensurePairingConnection() async throws {
         if connection.isConnected { return }
-        refreshNetworkStatus()
-        guard vpnConnected else {
-            throw EngineError.message("LocalDevVPN isn't connected. Turn it on, then try again.")
+        let (reachable, _, _) = await NetworkStatus.summarize(deviceIP: deviceIP)
+        vpnConnected = reachable
+        guard reachable else {
+            throw EngineError.message("Loopback tunnel isn't ready. Enable any backend that routes \(deviceIP) back to this device, then try again.")
         }
         let path = pairingFilePath ?? PairingController.pairingFilePath()
         guard fileExistsNonEmpty(path) else {
@@ -1111,15 +1118,15 @@ final class Engine: ObservableObject {
 
 enum Guides {
     static let vpn = Guide(
-        title: "Turn on LocalDevVPN",
+        title: "Enable loopback tunnel",
         systemImage: "network",
         steps: [
-            "Open the LocalDevVPN app (install it first if you haven't).",
-            "Tap Connect so the toggle turns on.",
-            "Keep Wi-Fi on, then come back here — this continues automatically.",
+            "Enable any backend that routes 10.7.0.1 back to this device, such as LocalDevVPN, clashmi, or anywhere.",
+            "Make sure the loopback route is active and Wi‑Fi stays on.",
+            "Come back here — the install continues automatically once 10.7.0.1:49152 is reachable.",
         ],
-        actionLabel: "Get LocalDevVPN",
-        actionURLString: "https://apps.apple.com/app/id6755608044")
+        actionLabel: nil,
+        actionURLString: nil)
 
     static let pairing = Guide(
         title: "Pair this iPhone in Settings",

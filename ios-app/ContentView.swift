@@ -97,9 +97,9 @@ struct ContentView: View {
         if let summary = engine.deviceSummary {
             StatusPill(text: summary, systemImage: "iphone", color: .green)
         } else if engine.vpnConnected {
-            StatusPill(text: "Tunnel connected", systemImage: "checkmark.shield.fill", color: .green)
+            StatusPill(text: "环回已连接", systemImage: "checkmark.shield.fill", color: .green)
         } else {
-            StatusPill(text: "Tunnel off", systemImage: "shield.slash.fill", color: .red)
+            StatusPill(text: "环回未就绪", systemImage: "shield.slash.fill", color: .red)
         }
     }
 
@@ -108,7 +108,7 @@ struct ContentView: View {
     /// A quiet brand credit at the foot of the screen, tucked below the flow so it
     /// stays visible without crowding the header.
     private var footer: some View {
-        Text("an app by Frizzle")
+        Text("Frizzle 出品")
             .font(.caption)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
@@ -121,14 +121,14 @@ struct ContentView: View {
         PanelCard {
             VStack(alignment: .leading, spacing: 12) {
                 sectionTitle("Apple ID", systemImage: "person.crop.circle.fill")
-                TextField("Email", text: $engine.appleID)
+                TextField("邮箱", text: $engine.appleID)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.emailAddress)
                     .textContentType(.username)
                     .textFieldStyle(.plain)
                     .fieldBackground()
-                SecureField("Password", text: $engine.applePassword)
+                SecureField("密码", text: $engine.applePassword)
                     .textContentType(.password)
                     .textFieldStyle(.plain)
                     .fieldBackground()
@@ -150,9 +150,9 @@ struct ContentView: View {
                         .font(.title2)
                         .foregroundStyle(Theme.brand)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Update available")
+                        Text("发现更新")
                             .font(.subheadline.weight(.semibold))
-                        Text("SideInstaller \(updateChecker.latestVersion ?? "") is available — you're on \(updateChecker.currentVersion).")
+                        Text("SideInstaller \(updateChecker.latestVersion ?? "") 已可用 — 当前版本为 \(updateChecker.currentVersion)。")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -173,7 +173,7 @@ struct ContentView: View {
                     if let url = URL(string: UpdateChecker.releasesURL) { openURL(url) }
                 } label: {
                     HStack(spacing: 4) {
-                        Text("Get the latest version")
+                        Text("获取最新版本")
                         Image(systemName: "arrow.up.right")
                     }
                     .font(.footnote.weight(.semibold))
@@ -189,9 +189,9 @@ struct ContentView: View {
     private var appCard: some View {
         PanelCard {
             VStack(alignment: .leading, spacing: 12) {
-                sectionTitle("Install", systemImage: "square.and.arrow.down.fill")
+                sectionTitle("安装", systemImage: "square.and.arrow.down.fill")
                 Menu {
-                    Picker("Install", selection: $engine.installSource) {
+                    Picker("安装", selection: $engine.installSource) {
                         ForEach(InstallSource.allCases) { src in
                             Text(src.displayName).tag(src)
                         }
@@ -222,11 +222,11 @@ struct ContentView: View {
             HStack(spacing: 10) {
                 if engine.isRunning {
                     ProgressView().tint(.white)
-                    Text("Cancel")
+                    Text("取消")
                 } else {
                     Image(systemName: engine.finished ? "arrow.clockwise" : "square.and.arrow.down.fill")
                         .contentTransition(.symbolEffect(.replace))
-                    Text(engine.finished ? "Reinstall" : "Install \(engine.installSource.shortName)")
+                    Text(engine.finished ? "重新安装" : "安装 \(engine.installSource.shortName)")
                 }
             }
         }
@@ -239,10 +239,7 @@ struct ContentView: View {
         .animation(.smooth(duration: 0.3), value: engine.isRunning)
     }
 
-    // MARK: LocalDevVPN requirement
-
-    /// Shown above the Install button while the LocalDevVPN tunnel is off — the
-    /// whole install runs over it, so it must be on before tapping Install.
+    /// 环回未就绪时显示在安装按钮上方。
     private var vpnRequirement: some View {
         CalloutCard(tint: .red) {
             HStack(alignment: .top, spacing: 14) {
@@ -251,9 +248,9 @@ struct ContentView: View {
                     .foregroundStyle(.red)
                     .symbolEffect(.pulse)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("LocalDevVPN required")
+                    Text("需要环回隧道")
                         .font(.subheadline.weight(.semibold))
-                    Text("Open LocalDevVPN and tap Connect. The install runs over its tunnel.")
+                    Text("启用任意可将 \(engine.deviceIP) 回环到本机的后端，例如 LocalDevVPN、clashmi 或 anywhere。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -278,7 +275,7 @@ struct ContentView: View {
         PanelCard {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    Text(engine.finished ? "Installed" : "Installing")
+                    Text(engine.finished ? "已安装" : "安装中")
                         .font(.headline)
                         .contentTransition(.opacity)
                     Spacer()

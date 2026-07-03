@@ -30,14 +30,14 @@ struct DownloadsView: View {
             .sheet(isPresented: $showSettings) { SettingsView() }
         }
         .onAppear { manager.refresh() }
-        .alert("Delete this download?",
+        .alert("删除这个下载文件？",
                isPresented: Binding(get: { pendingDelete != nil },
                                     set: { if !$0 { pendingDelete = nil } })) {
-            Button("Delete", role: .destructive) {
+            Button("删除", role: .destructive) {
                 if let item = pendingDelete { manager.delete(item) }
                 pendingDelete = nil
             }
-            Button("Cancel", role: .cancel) { pendingDelete = nil }
+            Button("取消", role: .cancel) { pendingDelete = nil }
         } message: {
             if let item = pendingDelete {
                 Text("“\(item.fileName)” (\(item.sizeText)) will be removed. You can download it again any time from the Install tab.")
@@ -85,9 +85,9 @@ struct DownloadsView: View {
                 Image(systemName: "arrow.down.circle")
                     .font(.largeTitle)
                     .foregroundStyle(Theme.brand)
-                Text("No downloads")
+                Text("暂无下载")
                     .font(.headline)
-                Text("IPAs you download from the Install tab show up here so you can delete them later.")
+                Text("你在“安装”页下载的 IPA 会显示在这里，之后可以随时删除。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -136,10 +136,10 @@ struct DownloadsView: View {
                     HStack(spacing: 6) {
                         if deleting {
                             ProgressView().controlSize(.small)
-                            Text("Deleting")
+                            Text("删除中")
                         } else {
                             Image(systemName: "trash")
-                            Text("Delete")
+                            Text("删除")
                         }
                     }
                     .font(.subheadline.weight(.medium))
@@ -162,7 +162,7 @@ struct DownloadsView: View {
                     .font(.title2)
                     .foregroundStyle(.red)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Something went wrong")
+                    Text("出现问题")
                         .font(.subheadline.weight(.semibold))
                     Text(message)
                         .font(.footnote)

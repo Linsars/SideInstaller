@@ -34,14 +34,14 @@ struct CertsView: View {
             .toolbar { settingsToolbarItem(isPresented: $showSettings) }
             .sheet(isPresented: $showSettings) { SettingsView() }
         }
-        .alert("Revoke this certificate?",
+        .alert("吊销这个证书？",
                isPresented: Binding(get: { pendingRevoke != nil },
                                     set: { if !$0 { pendingRevoke = nil } })) {
-            Button("Revoke", role: .destructive) {
+            Button("吊销", role: .destructive) {
                 if let cert = pendingRevoke { manager.revoke(cert) }
                 pendingRevoke = nil
             }
-            Button("Cancel", role: .cancel) { pendingRevoke = nil }
+            Button("取消", role: .cancel) { pendingRevoke = nil }
         } message: {
             if let cert = pendingRevoke {
                 Text("“\(cert.displayName)” will be revoked. Apps already signed with it will stop launching on every device. This can't be undone.")
@@ -66,14 +66,14 @@ struct CertsView: View {
         PanelCard {
             VStack(alignment: .leading, spacing: 12) {
                 sectionTitle("Apple ID", systemImage: "person.crop.circle.fill")
-                TextField("Email", text: $engine.appleID)
+                TextField("邮箱", text: $engine.appleID)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.emailAddress)
                     .textContentType(.username)
                     .textFieldStyle(.plain)
                     .fieldBackground()
-                SecureField("Password", text: $engine.applePassword)
+                SecureField("密码", text: $engine.applePassword)
                     .textContentType(.password)
                     .textFieldStyle(.plain)
                     .fieldBackground()
@@ -91,11 +91,11 @@ struct CertsView: View {
             HStack(spacing: 10) {
                 if manager.isWorking {
                     ProgressView().tint(.white)
-                    Text(manager.isSignedIn ? "Refreshing" : "Signing in")
+                    Text(manager.isSignedIn ? "刷新中" : "登录中")
                 } else {
                     Image(systemName: manager.hasLoaded ? "arrow.clockwise" : "list.bullet.rectangle.fill")
                         .contentTransition(.symbolEffect(.replace))
-                    Text(manager.hasLoaded ? "Refresh" : "Load certificates")
+                    Text(manager.hasLoaded ? "刷新" : "加载证书")
                 }
             }
         }
@@ -112,7 +112,7 @@ struct CertsView: View {
         } else if !manager.certs.isEmpty {
             VStack(spacing: 14) {
                 HStack {
-                    Text("\(manager.certs.count) of 3 certificates")
+                    Text("\(manager.certs.count) / 3 个证书")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -131,9 +131,9 @@ struct CertsView: View {
                 Image(systemName: "checkmark.seal")
                     .font(.largeTitle)
                     .foregroundStyle(Theme.brand)
-                Text("No certificates")
+                Text("没有证书")
                     .font(.headline)
-                Text("This Apple ID has no development certificates to revoke.")
+                Text("这个 Apple ID 没有可吊销的开发证书。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -162,7 +162,7 @@ struct CertsView: View {
                     }
                     Spacer()
                     if cert.isExpired {
-                        Text("Expired")
+                        Text("已过期")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.orange)
                             .padding(.horizontal, 9)
@@ -193,10 +193,10 @@ struct CertsView: View {
                     HStack(spacing: 6) {
                         if revoking {
                             ProgressView().controlSize(.small)
-                            Text("Revoking")
+                            Text("吊销中")
                         } else {
                             Image(systemName: "trash")
-                            Text("Revoke")
+                            Text("吊销")
                         }
                     }
                     .font(.subheadline.weight(.medium))
@@ -219,7 +219,7 @@ struct CertsView: View {
                     .font(.title2)
                     .foregroundStyle(.red)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Something went wrong")
+                    Text("出现问题")
                         .font(.subheadline.weight(.semibold))
                     Text(message)
                         .font(.footnote)

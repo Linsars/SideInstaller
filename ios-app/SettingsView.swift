@@ -18,11 +18,11 @@ struct SettingsView: View {
                 advancedSection
                 logSection
             }
-            .navigationTitle("Settings")
+            .navigationTitle("设置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button("完成") { dismiss() }
                 }
             }
         }
@@ -82,7 +82,7 @@ struct SettingsView: View {
     private var advancedSection: some View {
         Section {
             HStack {
-                Text("Device IP")
+                Text("设备 IP")
                 Spacer()
                 TextField("10.7.0.1", text: $engine.deviceIP)
                     .textInputAutocapitalization(.never)
@@ -94,7 +94,7 @@ struct SettingsView: View {
         } header: {
             Text("Advanced")
         } footer: {
-            Text("The LocalDevVPN tunnel target. Leave the default unless you've changed it.")
+            Text("环回目标 IP。除非你的隧道后端使用了不同地址，否则保持默认值即可。")
         }
     }
 

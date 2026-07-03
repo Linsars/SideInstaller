@@ -1,10 +1,9 @@
 import Foundation
 import Darwin
 
-/// Best-effort detection of the LocalDevVPN loopback + Wi-Fi by scanning the
-/// active network interfaces. LocalDevVPN brings up a `utun*` tunnel interface;
-/// Wi-Fi is `en0`. This is a quick readout — the real proof is whether the
-/// lockdown connection succeeds.
+/// Network diagnostics for the loopback-based RSD transport. We keep interface
+/// scanning for human-readable detail, but readiness is decided by a real TCP
+/// probe to the RSD endpoint rather than by a specific VPN app or subnet guess.
 enum NetworkStatus {
 
     struct Interface {
@@ -35,47 +34,13 @@ enum NetworkStatus {
         return result
     }
 
-    /// (vpnUp, wifiUp, detail) — vpnUp when the LocalDevVPN loopback tunnel is up
-    /// for the given `deviceIP` (see `localDevVPNUp`).
-    static func summarize(deviceIP: String) -> (vpn: Bool, wifi: Bool, detail: String) {
+    /// `(reachable, wifiUp, detail)` — reachable when the app can actually open a
+    /// TCP connection to the RSD endpoint on `deviceIP:49152`.
+    static func summarize(deviceIP: String, port: UInt16 = 49152) async -> (vpn: Bool, wifi: Bool, detail: String) {
         let ifs = interfaces()
-        let vpn = isLocalDevVPNUp(in: ifs, deviceIP: deviceIP)
+        let reachable = await LoopbackProbe.canReach(host: deviceIP, port: port)
         let wifi = ifs.contains { $0.name == "en0" }
         let detail = ifs.map { "\($0.name)=\($0.ipv4)" }.joined(separator: ", ")
-        return (vpn, wifi, detail)
-    }
-
-    /// True when LocalDevVPN's loopback tunnel is up: some interface holds an
-    /// IPv4 in the same /24 as `deviceIP`. LocalDevVPN's default is `10.7.0.0/24`
-    /// (device side `10.7.0.0`, peer `10.7.0.1` — the address we connect to), so
-    /// the device gains a `utun*` address in that subnet while it's connected.
-    ///
-    /// Scoping to the subnet — rather than matching any `utun*` — is what makes
-    /// this reliable: iOS keeps system `utun` interfaces around (Handoff, Wi-Fi
-    /// calling, …) even with no VPN, so a bare name check yields false positives.
-    static func localDevVPNUp(deviceIP: String) -> Bool {
-        isLocalDevVPNUp(in: interfaces(), deviceIP: deviceIP)
-    }
-
-    private static func isLocalDevVPNUp(in ifs: [Interface], deviceIP: String) -> Bool {
-        guard let prefix = subnetPrefix24(deviceIP) else {
-            // Unparseable target IP — fall back to the broad tunnel-name check.
-            return ifs.contains { isTunnelInterface($0.name) }
-        }
-        return ifs.contains { $0.ipv4.hasPrefix(prefix) }
-    }
-
-    private static func isTunnelInterface(_ name: String) -> Bool {
-        name.hasPrefix("utun") || name.hasPrefix("ipsec")
-            || name.hasPrefix("tap") || name.hasPrefix("ppp")
-    }
-
-    /// `"10.7.0.1"` -> `"10.7.0."` — the first three octets plus a trailing dot,
-    /// for /24 membership tests via `hasPrefix`. The trailing dot keeps `10.7.0.`
-    /// from matching `10.7.0X` (e.g. `10.70.0.5`). nil if `ip` isn't dotted-quad.
-    private static func subnetPrefix24(_ ip: String) -> String? {
-        let octets = ip.split(separator: ".", omittingEmptySubsequences: false)
-        guard octets.count == 4, octets.allSatisfy({ UInt8($0) != nil }) else { return nil }
-        return octets.prefix(3).joined(separator: ".") + "."
+        return (reachable, wifi, detail)
     }
 }
